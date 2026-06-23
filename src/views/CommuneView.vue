@@ -71,7 +71,7 @@
               class="fr-mt-2w"
               :pages="pages(org)"
               :current-page="org.currentPage"
-              @update:current-page="org.currentPage = $event"
+              @update:current-page="onPageChange(org, $event)"
             />
           </template>
         </section>
@@ -119,6 +119,7 @@ interface Org {
   datasets: Dataset[]
   datasetsLoading: boolean
   currentPage: number
+  total: number
 }
 
 const route = useRoute()
@@ -186,6 +187,7 @@ async function fetchOrgs() {
       datasets: [],
       datasetsLoading: true,
       currentPage: 0,
+      total: 0,
     }))
   } finally {
     orgsLoading.value = false
@@ -194,20 +196,22 @@ async function fetchOrgs() {
   orgs.value.forEach(fetchDatasets)
 }
 
-async function fetchDatasets(org: Org) {
+async function fetchDatasets(org: Org, page = 1) {
+  org.datasetsLoading = true
   try {
     const res = await fetch(
-      `https://www.data.gouv.fr/api/1/organizations/${org.id}/datasets/?page_size=100`,
+      `https://www.data.gouv.fr/api/2/datasets/search/?organization=${org.id}&page=${page}&page_size=${PAGE_SIZE}`,
     )
     const json = await res.json()
     org.datasets = json.data.map((ds: any) => ({ id: ds.id, title: ds.title, page: ds.page }))
+    org.total = json.total
   } finally {
     org.datasetsLoading = false
   }
 }
 
 function pageCount(org: Org) {
-  return Math.ceil(org.datasets.length / PAGE_SIZE)
+  return Math.ceil(org.total / PAGE_SIZE)
 }
 
 function pages(org: Org) {
@@ -219,7 +223,11 @@ function pages(org: Org) {
 }
 
 function pagedDatasets(org: Org) {
-  const start = org.currentPage * PAGE_SIZE
-  return org.datasets.slice(start, start + PAGE_SIZE)
+  return org.datasets
+}
+
+async function onPageChange(org: Org, page: number) {
+  org.currentPage = page
+  await fetchDatasets(org, page + 1)
 }
 </script>
