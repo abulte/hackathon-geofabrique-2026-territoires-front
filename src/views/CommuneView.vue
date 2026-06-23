@@ -14,8 +14,8 @@
         <DsfrBadge :label="`Région ${commune.codeRegion}`" type="info" no-icon />
       </div>
 
-      <div v-if="population" class="fr-grid-row fr-grid-row--gutters fr-mb-6w">
-        <div class="fr-col-12 fr-col-sm-6">
+      <div class="fr-grid-row fr-grid-row--gutters fr-mb-6w">
+        <div v-if="population" class="fr-col-12 fr-col-sm-4">
           <DsfrHighlight color="purple-glycine">
             <p class="fr-text--sm fr-mb-0">Population municipale ({{ population.year }})</p>
             <p class="fr-text--bold fr-mb-0" style="font-size: 1.75rem">
@@ -23,11 +23,19 @@
             </p>
           </DsfrHighlight>
         </div>
-        <div class="fr-col-12 fr-col-sm-6">
+        <div v-if="population" class="fr-col-12 fr-col-sm-4">
           <DsfrHighlight color="blue-cumulus">
             <p class="fr-text--sm fr-mb-0">Population totale ({{ population.year }})</p>
             <p class="fr-text--bold fr-mb-0" style="font-size: 1.75rem">
               {{ population.ptot.toLocaleString('fr-FR') }}
+            </p>
+          </DsfrHighlight>
+        </div>
+        <div v-if="logements" class="fr-col-12 fr-col-sm-4">
+          <DsfrHighlight color="green-bourgeon">
+            <p class="fr-text--sm fr-mb-0">Résidences principales ({{ logements.year }})</p>
+            <p class="fr-text--bold fr-mb-0" style="font-size: 1.75rem">
+              {{ Math.round(logements.dwellings).toLocaleString('fr-FR') }}
             </p>
           </DsfrHighlight>
         </div>
@@ -239,6 +247,11 @@ interface Population {
   ptot: number
 }
 
+interface Logements {
+  year: string
+  dwellings: number
+}
+
 interface Dataset {
   id: string
   title: string
@@ -286,6 +299,7 @@ const route = useRoute()
 const code = route.params.code as string
 const commune = ref<Commune | null>(null)
 const population = ref<Population | null>(null)
+const logements = ref<Logements | null>(null)
 const loading = ref(true)
 
 // Tabular search
@@ -332,9 +346,12 @@ const orgsLoading = ref(false)
 
 onMounted(async () => {
   try {
-    const [communeRes, popRes] = await Promise.all([
+    const [communeRes, popRes, logementsRes] = await Promise.all([
       fetch(`https://geo.api.gouv.fr/communes/${code}?fields=nom,code,codeDepartement,codeRegion,contour`),
       fetch(`https://api.insee.fr/melodi/data/DS_POPULATIONS_REFERENCE?GEO=COM-${code}`, {
+        headers: { accept: 'application/json' },
+      }),
+      fetch(`https://api.insee.fr/melodi/data/DS_RP_LOGEMENT_PRINC?GEO=COM-${code}&OCS=DW_MAIN&NRG_SRC=_T&CARS=_T&NOR=_T&BUILD_END=_T&TDW=_T&TSH=_T&CARPARK=_T&L_STAY=_T`, {
         headers: { accept: 'application/json' },
       }),
     ])
@@ -344,6 +361,11 @@ onMounted(async () => {
     if (popRes.ok) {
       const popJson = await popRes.json()
       population.value = parsePopulation(popJson.observations)
+    }
+
+    if (logementsRes.ok) {
+      const logementsJson = await logementsRes.json()
+      logements.value = parseLogements(logementsJson.observations)
     }
   } finally {
     loading.value = false
@@ -375,6 +397,19 @@ function parsePopulation(observations: any[]): Population | null {
   const entry = byYear[latest]
   if (entry.pmun == null || entry.ptot == null) return null
   return entry as Population
+}
+
+function parseLogements(observations: any[]): Logements | null {
+  const byYear: Record<string, number> = {}
+
+  for (const obs of observations) {
+    if (obs.dimensions.RP_MEASURE !== 'DWELLINGS') continue
+    byYear[obs.dimensions.TIME_PERIOD] = obs.measures.OBS_VALUE_NIVEAU.value
+  }
+
+  const latest = Object.keys(byYear).sort().at(-1)
+  if (!latest) return null
+  return { year: latest, dwellings: byYear[latest] }
 }
 
 function onTabularSearch() {

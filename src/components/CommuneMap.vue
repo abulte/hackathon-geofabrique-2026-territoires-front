@@ -21,10 +21,14 @@ onMounted(() => {
     container: mapEl.value!,
     style: mapStyles.simple,
     attributionControl: false,
+    scrollZoom: false,
+    boxZoom: false,
+    doubleClickZoom: false,
+    touchZoomRotate: false,
+    dragRotate: false,
   })
 
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
   map.on('load', () => {
     map.addSource('commune', { type: 'geojson', data: props.contour as GeoJSON.GeoJSON })
