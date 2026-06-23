@@ -109,7 +109,7 @@
           </section>
 
           <!-- Spatial datasets -->
-          <h2 id="spatial">Jeux de données territoriaux</h2>
+          <h2 id="spatial" class="fr-mt-6w">Jeux de données territoriaux</h2>
 
           <div v-if="spatialLoading">Chargement…</div>
 
