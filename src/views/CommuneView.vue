@@ -33,139 +33,155 @@
         </div>
       </div>
 
-      <!-- Tabular data search -->
-      <h2>Données tabulaires</h2>
+      <!-- Two-column layout -->
+      <div class="fr-grid-row fr-grid-row--gutters">
+        <div class="fr-col-12 fr-col-md-3">
+          <DsfrSideMenu
+            heading-title="Sur cette page"
+            :menu-items="[
+              { text: 'Données tabulaires', to: { hash: '#tabular' } },
+              { text: 'Données territoriales', to: { hash: '#spatial' } },
+              { text: 'Organisations', to: { hash: '#orgs' } },
+            ]"
+          />
+        </div>
 
-      <div class="fr-search-bar fr-mb-2w" style="max-width: 560px">
-        <input
-          v-model="tabularQuery"
-          class="fr-input"
-          type="search"
-          placeholder="Rechercher un jeu de données…"
-          autocomplete="off"
-          @input="onTabularSearch"
-        />
-      </div>
+        <div class="fr-col-12 fr-col-md-9">
+          <!-- Tabular data search -->
+          <h2 id="tabular">Données tabulaires</h2>
 
-      <div v-if="tabularSearchLoading" class="fr-text--sm fr-text-mention--grey fr-mb-2w">Recherche…</div>
-
-      <ul v-else-if="tabularSearchResults.length" class="fr-raw-list fr-mb-3w" style="max-width: 560px">
-        <li
-          v-for="r in tabularSearchResults"
-          :key="r.resourceId"
-          class="fr-py-1w fr-px-2w"
-          style="border-bottom: 1px solid var(--border-default-grey); cursor: pointer"
-          @click="selectTabularResource(r)"
-        >
-          <span>{{ r.datasetTitle }}</span>
-          <span class="fr-text--sm fr-text-mention--grey fr-ml-1w">— {{ r.title }}</span>
-        </li>
-      </ul>
-
-      <section v-if="tabularSelected" class="fr-mb-6w">
-        <h3 class="fr-mb-0">{{ tabularSelected.datasetTitle }}</h3>
-        <p class="fr-text--sm fr-text-mention--grey fr-mb-1w">{{ tabularSelected.title }}</p>
-
-        <div v-if="tabularSelected.loading">Chargement…</div>
-
-        <template v-else-if="tabularSelected.total > 0">
-          <p class="fr-mb-1w">
-            <DsfrBadge :label="`${tabularSelected.total.toLocaleString('fr-FR')} ligne${tabularSelected.total > 1 ? 's' : ''}`" no-icon />
-          </p>
-          <div class="fr-table fr-table--sm fr-mb-1w" style="overflow-x: auto">
-            <table>
-              <thead>
-                <tr>
-                  <th v-for="col in Object.keys(tabularSelected.rows[0])" :key="col">{{ col }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, i) in tabularSelected.rows" :key="i">
-                  <td v-for="(val, col) in row" :key="col">{{ val }}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="fr-search-bar fr-mb-2w" style="max-width: 560px">
+            <input
+              v-model="tabularQuery"
+              class="fr-input"
+              type="search"
+              placeholder="Rechercher un jeu de données…"
+              autocomplete="off"
+              @input="onTabularSearch"
+            />
           </div>
-          <a :href="tabularSelected.previewUrl" target="_blank" rel="noopener" class="fr-link fr-text--sm" style="display: inline-block">
-            Voir dans l'explorateur →
-          </a>
-        </template>
 
-        <p v-else class="fr-text-mention--grey fr-text--sm">Aucune donnée pour cette commune.</p>
-      </section>
+          <div v-if="tabularSearchLoading" class="fr-text--sm fr-text-mention--grey fr-mb-2w">Recherche…</div>
 
-      <!-- Spatial datasets -->
-      <h2>Jeux de données référencés sur le territoire</h2>
+          <ul v-else-if="tabularSearchResults.length" class="fr-raw-list fr-mb-3w" style="max-width: 560px">
+            <li
+              v-for="r in tabularSearchResults"
+              :key="r.resourceId"
+              class="fr-py-1w fr-px-2w"
+              style="border-bottom: 1px solid var(--border-default-grey); cursor: pointer"
+              @click="selectTabularResource(r)"
+            >
+              <span>{{ r.datasetTitle }}</span>
+              <span class="fr-text--sm fr-text-mention--grey fr-ml-1w">— {{ r.title }}</span>
+            </li>
+          </ul>
 
-      <div v-if="spatialLoading">Chargement…</div>
+          <section v-if="tabularSelected" class="fr-mb-6w">
+            <h3 class="fr-mb-0">{{ tabularSelected.datasetTitle }}</h3>
+            <p class="fr-text--sm fr-text-mention--grey fr-mb-1w">{{ tabularSelected.title }}</p>
 
-      <p v-else-if="spatialDatasets.length === 0" class="fr-text-mention--grey">
-        Aucun jeu de données référencé pour ce territoire.
-      </p>
+            <div v-if="tabularSelected.loading">Chargement…</div>
 
-      <template v-else>
-        <ul class="fr-raw-list">
-          <li
-            v-for="ds in pagedSpatial"
-            :key="ds.id"
-            class="fr-py-1w"
-            style="border-bottom: 1px solid var(--border-default-grey)"
-          >
-            <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
-          </li>
-        </ul>
-        <DsfrPagination
-          v-if="spatialPageCount > 1"
-          class="fr-mt-2w"
-          :pages="spatialPages"
-          :current-page="spatialCurrentPage"
-          @update:current-page="spatialCurrentPage = $event"
-        />
-      </template>
+            <template v-else-if="tabularSelected.total > 0">
+              <p class="fr-mb-1w">
+                <DsfrBadge :label="`${tabularSelected.total.toLocaleString('fr-FR')} ligne${tabularSelected.total > 1 ? 's' : ''}`" no-icon />
+              </p>
+              <div class="fr-table fr-table--sm fr-mb-1w" style="overflow-x: auto">
+                <table>
+                  <thead>
+                    <tr>
+                      <th v-for="col in Object.keys(tabularSelected.rows[0])" :key="col">{{ col }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(row, i) in tabularSelected.rows" :key="i">
+                      <td v-for="(val, col) in row" :key="col">{{ val }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <a :href="tabularSelected.previewUrl" target="_blank" rel="noopener" class="fr-link fr-text--sm" style="display: inline-block">
+                Voir dans l'explorateur →
+              </a>
+            </template>
 
-      <!-- Org datasets -->
-      <h2 class="fr-mt-6w">Jeux de données des organisations data.gouv.fr</h2>
+            <p v-else class="fr-text-mention--grey fr-text--sm">Aucune donnée pour cette commune.</p>
+          </section>
 
-      <div v-if="orgsLoading">Chargement…</div>
+          <!-- Spatial datasets -->
+          <h2 id="spatial">Jeux de données territoriaux</h2>
 
-      <p v-else-if="orgs.length === 0" class="fr-text-mention--grey">
-        Aucune organisation data.gouv.fr trouvée pour cette commune.
-      </p>
+          <div v-if="spatialLoading">Chargement…</div>
 
-      <template v-else>
-        <section v-for="org in orgs" :key="org.id" class="fr-mb-6w">
-          <h3>{{ org.name }}</h3>
-
-          <div v-if="org.datasetsLoading">Chargement…</div>
-
-          <p v-else-if="org.datasets.length === 0" class="fr-text-mention--grey">
-            Aucun jeu de données.
+          <p v-else-if="spatialDatasets.length === 0" class="fr-text-mention--grey">
+            Aucun jeu de données référencé pour ce territoire.
           </p>
 
           <template v-else>
             <ul class="fr-raw-list">
               <li
-                v-for="ds in org.datasets"
+                v-for="ds in pagedSpatial"
                 :key="ds.id"
                 class="fr-py-1w"
                 style="border-bottom: 1px solid var(--border-default-grey)"
               >
-                <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">
-                  {{ ds.title }}
-                </a>
+                <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
               </li>
             </ul>
-
             <DsfrPagination
-              v-if="pageCount(org) > 1"
+              v-if="spatialPageCount > 1"
               class="fr-mt-2w"
-              :pages="pages(org)"
-              :current-page="org.currentPage"
-              @update:current-page="onPageChange(org, $event)"
+              :pages="spatialPages"
+              :current-page="spatialCurrentPage"
+              @update:current-page="spatialCurrentPage = $event"
             />
           </template>
-        </section>
-      </template>
+
+          <!-- Org datasets -->
+          <h2 id="orgs" class="fr-mt-6w">Organisations data.gouv.fr</h2>
+
+          <div v-if="orgsLoading">Chargement…</div>
+
+          <p v-else-if="orgs.length === 0" class="fr-text-mention--grey">
+            Aucune organisation data.gouv.fr trouvée pour cette commune.
+          </p>
+
+          <template v-else>
+            <section v-for="org in orgs" :key="org.id" class="fr-mb-6w">
+              <h3>{{ org.name }}</h3>
+
+              <div v-if="org.datasetsLoading">Chargement…</div>
+
+              <p v-else-if="org.datasets.length === 0" class="fr-text-mention--grey">
+                Aucun jeu de données.
+              </p>
+
+              <template v-else>
+                <ul class="fr-raw-list">
+                  <li
+                    v-for="ds in org.datasets"
+                    :key="ds.id"
+                    class="fr-py-1w"
+                    style="border-bottom: 1px solid var(--border-default-grey)"
+                  >
+                    <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">
+                      {{ ds.title }}
+                    </a>
+                  </li>
+                </ul>
+
+                <DsfrPagination
+                  v-if="pageCount(org) > 1"
+                  class="fr-mt-2w"
+                  :pages="pages(org)"
+                  :current-page="org.currentPage"
+                  @update:current-page="onPageChange(org, $event)"
+                />
+              </template>
+            </section>
+          </template>
+        </div>
+      </div>
     </template>
 
     <DsfrAlert
