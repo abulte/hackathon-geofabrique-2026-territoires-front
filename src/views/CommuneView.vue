@@ -36,14 +36,7 @@
       <!-- Two-column layout -->
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-3">
-          <DsfrSideMenu
-            heading-title="Sur cette page"
-            :menu-items="[
-              { text: 'Jeux de données des organisations', to: { hash: '#orgs' } },
-              { text: 'Bases de données référençant la commune', to: { hash: '#tabular' } },
-              { text: 'Jeux de données géographiques', to: { hash: '#spatial' } },
-            ]"
-          />
+          <DsfrSideMenu heading-title="Sur cette page" :menu-items="sideMenuItems" />
         </div>
 
         <div class="fr-col-12 fr-col-md-9">
@@ -155,6 +148,8 @@
           <!-- Spatial datasets -->
           <h2 id="spatial" class="fr-mt-6w">Jeux de données couvrant géographiquement la commune</h2>
 
+          <h3 id="spatial-zones">Via spatial.zones</h3>
+
           <div v-if="spatialLoading">Chargement…</div>
 
           <p v-else-if="spatialDatasets.length === 0" class="fr-text-mention--grey">
@@ -180,6 +175,9 @@
               @update:current-page="spatialCurrentPage = $event"
             />
           </template>
+
+          <h3 id="spatial-geom" class="fr-mt-4w">Via spatial.geom</h3>
+          <p class="fr-text-mention--grey">À venir.</p>
         </div>
       </div>
     </template>
@@ -239,6 +237,21 @@ interface Org {
   currentPage: number
   total: number
 }
+
+const sideMenuItems = ref([
+  { text: 'Jeux de données des organisations', to: { hash: '#orgs' } },
+  { text: 'Bases de données référençant la commune', to: { hash: '#tabular' } },
+  {
+    text: 'Jeux de données géographiques',
+    to: { hash: '#spatial' },
+    expanded: false,
+    id: 'sidemenu-spatial',
+    menuItems: [
+      { text: 'Via spatial.zones', to: { hash: '#spatial-zones' } },
+      { text: 'Via spatial.geom', to: { hash: '#spatial-geom' } },
+    ],
+  },
+])
 
 const route = useRoute()
 const code = route.params.code as string
