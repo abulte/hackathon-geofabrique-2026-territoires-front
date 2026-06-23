@@ -5,24 +5,35 @@
     <div v-if="loading">Chargement…</div>
 
     <template v-else-if="commune">
-      <h1>{{ commune.nom }}</h1>
+      <!-- Header -->
+      <h1 class="fr-mb-1w">{{ commune.nom }}</h1>
 
-      <ul class="fr-raw-list fr-mb-4w">
-        <li>Code INSEE : <strong>{{ commune.code }}</strong></li>
-        <li>Département : {{ commune.codeDepartement }}</li>
-        <li>Région : {{ commune.codeRegion }}</li>
-        <template v-if="population">
-          <li>
-            Population municipale ({{ population.year }}) :
-            <strong>{{ population.pmun.toLocaleString('fr-FR') }}</strong>
-          </li>
-          <li>
-            Population totale ({{ population.year }}) :
-            <strong>{{ population.ptot.toLocaleString('fr-FR') }}</strong>
-          </li>
-        </template>
-      </ul>
+      <div class="fr-mb-3w" style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+        <DsfrBadge :label="`INSEE : ${commune.code}`" type="info" no-icon />
+        <DsfrBadge :label="`Département ${commune.codeDepartement}`" type="info" no-icon />
+        <DsfrBadge :label="`Région ${commune.codeRegion}`" type="info" no-icon />
+      </div>
 
+      <div v-if="population" class="fr-grid-row fr-grid-row--gutters fr-mb-6w">
+        <div class="fr-col-12 fr-col-sm-6">
+          <DsfrHighlight color="purple-glycine">
+            <p class="fr-text--sm fr-mb-0">Population municipale ({{ population.year }})</p>
+            <p class="fr-text--bold fr-mb-0" style="font-size: 1.75rem">
+              {{ population.pmun.toLocaleString('fr-FR') }}
+            </p>
+          </DsfrHighlight>
+        </div>
+        <div class="fr-col-12 fr-col-sm-6">
+          <DsfrHighlight color="blue-cumulus">
+            <p class="fr-text--sm fr-mb-0">Population totale ({{ population.year }})</p>
+            <p class="fr-text--bold fr-mb-0" style="font-size: 1.75rem">
+              {{ population.ptot.toLocaleString('fr-FR') }}
+            </p>
+          </DsfrHighlight>
+        </div>
+      </div>
+
+      <!-- Datasets -->
       <h2>Jeux de données data.gouv.fr</h2>
 
       <div v-if="orgsLoading">Chargement…</div>
@@ -32,7 +43,7 @@
       </p>
 
       <template v-else>
-        <section v-for="org in orgs" :key="org.id" class="fr-mb-4w">
+        <section v-for="org in orgs" :key="org.id" class="fr-mb-6w">
           <h3>{{ org.name }}</h3>
 
           <div v-if="org.datasetsLoading">Chargement…</div>
@@ -41,16 +52,28 @@
             Aucun jeu de données.
           </p>
 
-          <ul v-else class="fr-raw-list">
-            <li
-              v-for="ds in org.datasets"
-              :key="ds.id"
-              class="fr-py-1w"
-              style="border-bottom: 1px solid var(--border-default-grey)"
-            >
-              <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
-            </li>
-          </ul>
+          <template v-else>
+            <ul class="fr-raw-list">
+              <li
+                v-for="ds in pagedDatasets(org)"
+                :key="ds.id"
+                class="fr-py-1w"
+                style="border-bottom: 1px solid var(--border-default-grey)"
+              >
+                <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">
+                  {{ ds.title }}
+                </a>
+              </li>
+            </ul>
+
+            <DsfrPagination
+              v-if="pageCount(org) > 1"
+              class="fr-mt-2w"
+              :pages="pages(org)"
+              :current-page="org.currentPage"
+              @update:current-page="org.currentPage = $event"
+            />
+          </template>
         </section>
       </template>
     </template>
@@ -67,6 +90,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+
+const PAGE_SIZE = 10
 
 interface Commune {
   nom: string
@@ -93,6 +118,7 @@ interface Org {
   siren: string
   datasets: Dataset[]
   datasetsLoading: boolean
+  currentPage: number
 }
 
 const route = useRoute()
@@ -159,6 +185,7 @@ async function fetchOrgs() {
       siren: row.siren,
       datasets: [],
       datasetsLoading: true,
+      currentPage: 0,
     }))
   } finally {
     orgsLoading.value = false
@@ -177,5 +204,22 @@ async function fetchDatasets(org: Org) {
   } finally {
     org.datasetsLoading = false
   }
+}
+
+function pageCount(org: Org) {
+  return Math.ceil(org.datasets.length / PAGE_SIZE)
+}
+
+function pages(org: Org) {
+  return Array.from({ length: pageCount(org) }, (_, i) => ({
+    label: String(i + 1),
+    title: `Page ${i + 1}`,
+    href: '#',
+  }))
+}
+
+function pagedDatasets(org: Org) {
+  const start = org.currentPage * PAGE_SIZE
+  return org.datasets.slice(start, start + PAGE_SIZE)
 }
 </script>
