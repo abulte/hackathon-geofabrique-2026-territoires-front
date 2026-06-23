@@ -6,11 +6,21 @@
 
     <template v-else-if="commune">
       <h1>{{ commune.nom }}</h1>
-      <p class="fr-text--lead">Code INSEE : <strong>{{ commune.code }}</strong></p>
+
       <ul class="fr-raw-list fr-mb-4w">
+        <li>Code INSEE : <strong>{{ commune.code }}</strong></li>
         <li>Département : {{ commune.codeDepartement }}</li>
         <li>Région : {{ commune.codeRegion }}</li>
-        <li v-if="commune.population">Population : {{ commune.population.toLocaleString('fr-FR') }}</li>
+        <template v-if="population">
+          <li>
+            Population municipale ({{ population.year }}) :
+            <strong>{{ population.pmun.toLocaleString('fr-FR') }}</strong>
+          </li>
+          <li>
+            Population totale ({{ population.year }}) :
+            <strong>{{ population.ptot.toLocaleString('fr-FR') }}</strong>
+          </li>
+        </template>
       </ul>
 
       <h2>Jeux de données data.gouv.fr</h2>
@@ -32,7 +42,12 @@
           </p>
 
           <ul v-else class="fr-raw-list">
-            <li v-for="ds in org.datasets" :key="ds.id" class="fr-py-1w" style="border-bottom: 1px solid var(--border-default-grey)">
+            <li
+              v-for="ds in org.datasets"
+              :key="ds.id"
+              class="fr-py-1w"
+              style="border-bottom: 1px solid var(--border-default-grey)"
+            >
               <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
             </li>
           </ul>
@@ -40,7 +55,12 @@
       </template>
     </template>
 
-    <DsfrAlert v-else type="error" title="Commune introuvable" :description="`Aucune commune avec le code ${code}.`" />
+    <DsfrAlert
+      v-else
+      type="error"
+      title="Commune introuvable"
+      :description="`Aucune commune avec le code ${code}.`"
+    />
   </div>
 </template>
 
@@ -53,7 +73,12 @@ interface Commune {
   code: string
   codeDepartement: string
   codeRegion: string
-  population?: number
+}
+
+interface Population {
+  year: string
+  pmun: number
+  ptot: number
 }
 
 interface Dataset {
@@ -73,23 +98,53 @@ interface Org {
 const route = useRoute()
 const code = route.params.code as string
 const commune = ref<Commune | null>(null)
+const population = ref<Population | null>(null)
 const loading = ref(true)
 const orgs = ref<Org[]>([])
 const orgsLoading = ref(false)
 
 onMounted(async () => {
   try {
-    const res = await fetch(
-      `https://geo.api.gouv.fr/communes/${code}?fields=nom,code,codeDepartement,codeRegion,population`,
-    )
-    if (res.ok) {
-      commune.value = await res.json()
-      fetchOrgs()
+    const [communeRes, popRes] = await Promise.all([
+      fetch(`https://geo.api.gouv.fr/communes/${code}?fields=nom,code,codeDepartement,codeRegion`),
+      fetch(`https://api.insee.fr/melodi/data/DS_POPULATIONS_REFERENCE?GEO=COM-${code}`, {
+        headers: { accept: 'application/json' },
+      }),
+    ])
+
+    if (communeRes.ok) commune.value = await communeRes.json()
+
+    if (popRes.ok) {
+      const popJson = await popRes.json()
+      population.value = parsePopulation(popJson.observations)
     }
   } finally {
     loading.value = false
   }
+
+  if (commune.value) fetchOrgs()
 })
+
+function parsePopulation(observations: any[]): Population | null {
+  const byYear: Record<string, Partial<Population>> = {}
+
+  for (const obs of observations) {
+    const year: string = obs.dimensions.TIME_PERIOD
+    const measure: string = obs.dimensions.POPREF_MEASURE
+    const value: number = obs.measures.OBS_VALUE_NIVEAU.value
+
+    if (!byYear[year]) byYear[year] = { year }
+    if (measure === 'PMUN') byYear[year].pmun = value
+    if (measure === 'PTOT') byYear[year].ptot = value
+  }
+
+  const latest = Object.keys(byYear).sort().at(-1)
+  if (!latest) return null
+
+  const entry = byYear[latest]
+  if (entry.pmun == null || entry.ptot == null) return null
+  return entry as Population
+}
 
 async function fetchOrgs() {
   orgsLoading.value = true
