@@ -33,8 +33,37 @@
         </div>
       </div>
 
-      <!-- Datasets -->
-      <h2>Jeux de données data.gouv.fr</h2>
+      <!-- Spatial datasets -->
+      <h2>Jeux de données référencés sur le territoire</h2>
+
+      <div v-if="spatialLoading">Chargement…</div>
+
+      <p v-else-if="spatialDatasets.length === 0" class="fr-text-mention--grey">
+        Aucun jeu de données référencé pour ce territoire.
+      </p>
+
+      <template v-else>
+        <ul class="fr-raw-list">
+          <li
+            v-for="ds in pagedSpatial"
+            :key="ds.id"
+            class="fr-py-1w"
+            style="border-bottom: 1px solid var(--border-default-grey)"
+          >
+            <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
+          </li>
+        </ul>
+        <DsfrPagination
+          v-if="spatialPageCount > 1"
+          class="fr-mt-2w"
+          :pages="spatialPages"
+          :current-page="spatialCurrentPage"
+          @update:current-page="spatialCurrentPage = $event"
+        />
+      </template>
+
+      <!-- Org datasets -->
+      <h2 class="fr-mt-6w">Jeux de données des organisations data.gouv.fr</h2>
 
       <div v-if="orgsLoading">Chargement…</div>
 
@@ -55,7 +84,7 @@
           <template v-else>
             <ul class="fr-raw-list">
               <li
-                v-for="ds in pagedDatasets(org)"
+                v-for="ds in org.datasets"
                 :key="ds.id"
                 class="fr-py-1w"
                 style="border-bottom: 1px solid var(--border-default-grey)"
@@ -88,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 const PAGE_SIZE = 10
@@ -127,6 +156,23 @@ const code = route.params.code as string
 const commune = ref<Commune | null>(null)
 const population = ref<Population | null>(null)
 const loading = ref(true)
+
+const spatialDatasets = ref<Dataset[]>([])
+const spatialLoading = ref(false)
+const spatialCurrentPage = ref(0)
+const spatialPageCount = computed(() => Math.ceil(spatialDatasets.value.length / PAGE_SIZE))
+const spatialPages = computed(() =>
+  Array.from({ length: spatialPageCount.value }, (_, i) => ({
+    label: String(i + 1),
+    title: `Page ${i + 1}`,
+    href: '#',
+  })),
+)
+const pagedSpatial = computed(() => {
+  const start = spatialCurrentPage.value * PAGE_SIZE
+  return spatialDatasets.value.slice(start, start + PAGE_SIZE)
+})
+
 const orgs = ref<Org[]>([])
 const orgsLoading = ref(false)
 
@@ -149,7 +195,10 @@ onMounted(async () => {
     loading.value = false
   }
 
-  if (commune.value) fetchOrgs()
+  if (commune.value) {
+    fetchSpatialDatasets()
+    fetchOrgs()
+  }
 })
 
 function parsePopulation(observations: any[]): Population | null {
@@ -171,6 +220,21 @@ function parsePopulation(observations: any[]): Population | null {
   const entry = byYear[latest]
   if (entry.pmun == null || entry.ptot == null) return null
   return entry as Population
+}
+
+async function fetchSpatialDatasets() {
+  spatialLoading.value = true
+  try {
+    const res = await fetch(
+      `https://www.data.gouv.fr/api/1/spatial/zone/fr:commune:${code}/datasets/`,
+    )
+    if (res.ok) {
+      const json = await res.json()
+      spatialDatasets.value = json.map((ds: any) => ({ id: ds.id, title: ds.title, page: ds.page }))
+    }
+  } finally {
+    spatialLoading.value = false
+  }
 }
 
 async function fetchOrgs() {
@@ -220,10 +284,6 @@ function pages(org: Org) {
     title: `Page ${i + 1}`,
     href: '#',
   }))
-}
-
-function pagedDatasets(org: Org) {
-  return org.datasets
 }
 
 async function onPageChange(org: Org, page: number) {
