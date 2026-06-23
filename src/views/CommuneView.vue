@@ -177,7 +177,32 @@
           </template>
 
           <h3 id="spatial-geom" class="fr-mt-4w">Via spatial.geom</h3>
-          <p class="fr-text-mention--grey">À venir.</p>
+
+          <div v-if="geomLoading">Chargement…</div>
+
+          <p v-else-if="geomTotal === 0" class="fr-text-mention--grey">
+            Aucun jeu de données trouvé pour cette commune.
+          </p>
+
+          <template v-else>
+            <ul class="fr-raw-list">
+              <li
+                v-for="ds in geomDatasets"
+                :key="ds.id"
+                class="fr-py-1w"
+                style="border-bottom: 1px solid var(--border-default-grey)"
+              >
+                <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">{{ ds.title }}</a>
+              </li>
+            </ul>
+            <DsfrPagination
+              v-if="geomPageCount > 1"
+              class="fr-mt-2w"
+              :pages="geomPages"
+              :current-page="geomCurrentPage"
+              @update:current-page="onGeomPageChange($event)"
+            />
+          </template>
         </div>
       </div>
     </template>
@@ -283,6 +308,20 @@ const pagedSpatial = computed(() => {
   return spatialDatasets.value.slice(start, start + PAGE_SIZE)
 })
 
+// Spatial geom
+const geomDatasets = ref<Dataset[]>([])
+const geomLoading = ref(false)
+const geomCurrentPage = ref(0)
+const geomTotal = ref(0)
+const geomPageCount = computed(() => Math.ceil(geomTotal.value / PAGE_SIZE))
+const geomPages = computed(() =>
+  Array.from({ length: geomPageCount.value }, (_, i) => ({
+    label: String(i + 1),
+    title: `Page ${i + 1}`,
+    href: '#',
+  })),
+)
+
 // Orgs
 const orgs = ref<Org[]>([])
 const orgsLoading = ref(false)
@@ -308,6 +347,7 @@ onMounted(async () => {
 
   if (commune.value) {
     fetchSpatialDatasets()
+    fetchGeomDatasets()
     fetchOrgs()
   }
 })
@@ -383,6 +423,32 @@ async function selectTabularResource(r: TabularResource) {
   } finally {
     tabularSelected.value.loading = false
   }
+}
+
+async function fetchGeomDatasets(page = 1) {
+  geomLoading.value = true
+  try {
+    const res = await fetch(
+      `https://tabular-api.data.gouv.fr/api/resources/818cd6c0-d765-4baf-a4cd-ea3c8616938e/data/?insee__exact=${code}&page=${page}&page_size=${PAGE_SIZE}`,
+    )
+    const json = await res.json()
+    geomTotal.value = json.meta.total
+    const ids: string[] = json.data.map((row: any) => row.id)
+    geomDatasets.value = await Promise.all(
+      ids.map(async (id) => {
+        const r = await fetch(`https://www.data.gouv.fr/api/2/datasets/${id}/`)
+        const ds = await r.json()
+        return { id: ds.id, title: ds.title, page: ds.page }
+      }),
+    )
+  } finally {
+    geomLoading.value = false
+  }
+}
+
+async function onGeomPageChange(page: number) {
+  geomCurrentPage.value = page
+  await fetchGeomDatasets(page + 1)
 }
 
 async function fetchSpatialDatasets() {

@@ -56,8 +56,10 @@
       couvre la commune.
     </p>
     <p>
-      Une intégration via <strong>spatial.geom</strong> est prévue, permettant une
-      couverture géographique plus fine basée sur les géométries réelles des jeux de données.
+      Un <a href="https://www.data.gouv.fr/datasets/association-dataset-data-gouv-et-communes-par-bbox-1" target="_blank" rel="noopener" class="fr-link">index d'association entre jeux de données et communes par bounding box</a>
+      est interrogé via l'<strong>API tabulaire</strong> (ressource <code>818cd6c0-d765-4baf-a4cd-ea3c8616938e</code>),
+      filtré sur la colonne <code>insee</code>. Les identifiants de jeux de données retournés
+      sont ensuite résolus via <code>/api/2/datasets/{id}/</code> pour obtenir titres et liens.
     </p>
 
     <h2>Sources de données</h2>
