@@ -33,6 +33,8 @@
         </div>
       </div>
 
+      <CommuneMap v-if="commune.contour" :contour="commune.contour" class="fr-mb-6w" />
+
       <!-- Two-column layout -->
       <div class="fr-grid-row fr-grid-row--gutters">
         <div class="fr-col-12 fr-col-md-3">
@@ -219,6 +221,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import CommuneMap from '../components/CommuneMap.vue'
 
 const PAGE_SIZE = 10
 
@@ -227,6 +230,7 @@ interface Commune {
   code: string
   codeDepartement: string
   codeRegion: string
+  contour?: GeoJSON.Geometry
 }
 
 interface Population {
@@ -329,7 +333,7 @@ const orgsLoading = ref(false)
 onMounted(async () => {
   try {
     const [communeRes, popRes] = await Promise.all([
-      fetch(`https://geo.api.gouv.fr/communes/${code}?fields=nom,code,codeDepartement,codeRegion`),
+      fetch(`https://geo.api.gouv.fr/communes/${code}?fields=nom,code,codeDepartement,codeRegion,contour`),
       fetch(`https://api.insee.fr/melodi/data/DS_POPULATIONS_REFERENCE?GEO=COM-${code}`, {
         headers: { accept: 'application/json' },
       }),
