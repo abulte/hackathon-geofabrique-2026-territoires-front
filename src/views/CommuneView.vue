@@ -33,6 +33,67 @@
         </div>
       </div>
 
+      <!-- Tabular data search -->
+      <h2>Données tabulaires</h2>
+
+      <div class="fr-search-bar fr-mb-2w" style="max-width: 560px">
+        <input
+          v-model="tabularQuery"
+          class="fr-input"
+          type="search"
+          placeholder="Rechercher un jeu de données…"
+          autocomplete="off"
+          @input="onTabularSearch"
+        />
+      </div>
+
+      <div v-if="tabularSearchLoading" class="fr-text--sm fr-text-mention--grey fr-mb-2w">Recherche…</div>
+
+      <ul v-else-if="tabularSearchResults.length" class="fr-raw-list fr-mb-3w" style="max-width: 560px">
+        <li
+          v-for="r in tabularSearchResults"
+          :key="r.resourceId"
+          class="fr-py-1w fr-px-2w"
+          style="border-bottom: 1px solid var(--border-default-grey); cursor: pointer"
+          @click="selectTabularResource(r)"
+        >
+          <span>{{ r.datasetTitle }}</span>
+          <span class="fr-text--sm fr-text-mention--grey fr-ml-1w">— {{ r.title }}</span>
+        </li>
+      </ul>
+
+      <section v-if="tabularSelected" class="fr-mb-6w">
+        <h3 class="fr-mb-0">{{ tabularSelected.datasetTitle }}</h3>
+        <p class="fr-text--sm fr-text-mention--grey fr-mb-1w">{{ tabularSelected.title }}</p>
+
+        <div v-if="tabularSelected.loading">Chargement…</div>
+
+        <template v-else-if="tabularSelected.total > 0">
+          <p class="fr-mb-1w">
+            <DsfrBadge :label="`${tabularSelected.total.toLocaleString('fr-FR')} ligne${tabularSelected.total > 1 ? 's' : ''}`" no-icon />
+          </p>
+          <div class="fr-table fr-table--sm fr-mb-1w" style="overflow-x: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th v-for="col in Object.keys(tabularSelected.rows[0])" :key="col">{{ col }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in tabularSelected.rows" :key="i">
+                  <td v-for="(val, col) in row" :key="col">{{ val }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <a :href="tabularSelected.previewUrl" target="_blank" rel="noopener" class="fr-link fr-text--sm" style="display: inline-block">
+            Voir dans l'explorateur →
+          </a>
+        </template>
+
+        <p v-else class="fr-text-mention--grey fr-text--sm">Aucune donnée pour cette commune.</p>
+      </section>
+
       <!-- Spatial datasets -->
       <h2>Jeux de données référencés sur le territoire</h2>
 
@@ -141,6 +202,17 @@ interface Dataset {
   page: string
 }
 
+interface TabularResource {
+  resourceId: string
+  colCommune: string
+  datasetTitle: string
+  title: string
+  previewUrl: string
+  loading: boolean
+  total: number
+  rows: Record<string, unknown>[]
+}
+
 interface Org {
   id: string
   name: string
@@ -157,6 +229,14 @@ const commune = ref<Commune | null>(null)
 const population = ref<Population | null>(null)
 const loading = ref(true)
 
+// Tabular search
+const tabularQuery = ref('')
+const tabularSearchLoading = ref(false)
+const tabularSearchResults = ref<TabularResource[]>([])
+const tabularSelected = ref<TabularResource | null>(null)
+let tabularDebounce: ReturnType<typeof setTimeout>
+
+// Spatial
 const spatialDatasets = ref<Dataset[]>([])
 const spatialLoading = ref(false)
 const spatialCurrentPage = ref(0)
@@ -173,6 +253,7 @@ const pagedSpatial = computed(() => {
   return spatialDatasets.value.slice(start, start + PAGE_SIZE)
 })
 
+// Orgs
 const orgs = ref<Org[]>([])
 const orgsLoading = ref(false)
 
@@ -220,6 +301,56 @@ function parsePopulation(observations: any[]): Population | null {
   const entry = byYear[latest]
   if (entry.pmun == null || entry.ptot == null) return null
   return entry as Population
+}
+
+function onTabularSearch() {
+  clearTimeout(tabularDebounce)
+  tabularSearchResults.value = []
+  tabularSelected.value = null
+  if (tabularQuery.value.length < 2) return
+  tabularDebounce = setTimeout(searchTabular, 300)
+}
+
+async function searchTabular() {
+  tabularSearchLoading.value = true
+  try {
+    const res = await fetch(
+      `https://tabular-api.data.gouv.fr/api/resources/ce3d9c4e-9c24-4ac3-a064-7a2d59c44a10/data/?dataset.title__contains=${encodeURIComponent(tabularQuery.value)}&page_size=10`,
+    )
+    const json = await res.json()
+    tabularSearchResults.value = json.data.map((row: any) => ({
+      resourceId: row.resource_id,
+      colCommune: row.col_commune,
+      datasetTitle: row['dataset.title'],
+      title: row.title,
+      previewUrl: row.preview_url,
+      loading: false,
+      total: 0,
+      rows: [],
+    }))
+  } finally {
+    tabularSearchLoading.value = false
+  }
+}
+
+async function selectTabularResource(r: TabularResource) {
+  tabularSearchResults.value = []
+  tabularQuery.value = ''
+  tabularSelected.value = { ...r, loading: true }
+
+  try {
+    const filter = `${encodeURIComponent(r.colCommune)}__exact=${code}`
+    const res = await fetch(
+      `https://tabular-api.data.gouv.fr/api/resources/${r.resourceId}/data/?${filter}&page_size=5`,
+    )
+    const json = await res.json()
+    tabularSelected.value.total = json.meta.total
+    tabularSelected.value.rows = json.data.map(({ __id, ...rest }: any) => rest)
+  } catch {
+    tabularSelected.value.total = 0
+  } finally {
+    tabularSelected.value.loading = false
+  }
 }
 
 async function fetchSpatialDatasets() {
