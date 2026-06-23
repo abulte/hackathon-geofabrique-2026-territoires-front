@@ -39,16 +39,60 @@
           <DsfrSideMenu
             heading-title="Sur cette page"
             :menu-items="[
-              { text: 'Données tabulaires', to: { hash: '#tabular' } },
-              { text: 'Données territoriales', to: { hash: '#spatial' } },
-              { text: 'Organisations', to: { hash: '#orgs' } },
+              { text: 'Jeux de données des organisations', to: { hash: '#orgs' } },
+              { text: 'Bases de données référençant la commune', to: { hash: '#tabular' } },
+              { text: 'Jeux de données géographiques', to: { hash: '#spatial' } },
             ]"
           />
         </div>
 
         <div class="fr-col-12 fr-col-md-9">
+          <!-- Org datasets -->
+          <h2 id="orgs">Jeux de données des organisations data.gouv.fr</h2>
+
+          <div v-if="orgsLoading">Chargement…</div>
+
+          <p v-else-if="orgs.length === 0" class="fr-text-mention--grey">
+            Aucune organisation data.gouv.fr trouvée pour cette commune.
+          </p>
+
+          <template v-else>
+            <section v-for="org in orgs" :key="org.id" class="fr-mb-6w">
+              <h3>{{ org.name }}</h3>
+
+              <div v-if="org.datasetsLoading">Chargement…</div>
+
+              <p v-else-if="org.datasets.length === 0" class="fr-text-mention--grey">
+                Aucun jeu de données.
+              </p>
+
+              <template v-else>
+                <ul class="fr-raw-list">
+                  <li
+                    v-for="ds in org.datasets"
+                    :key="ds.id"
+                    class="fr-py-1w"
+                    style="border-bottom: 1px solid var(--border-default-grey)"
+                  >
+                    <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">
+                      {{ ds.title }}
+                    </a>
+                  </li>
+                </ul>
+
+                <DsfrPagination
+                  v-if="pageCount(org) > 1"
+                  class="fr-mt-2w"
+                  :pages="pages(org)"
+                  :current-page="org.currentPage"
+                  @update:current-page="onPageChange(org, $event)"
+                />
+              </template>
+            </section>
+          </template>
+
           <!-- Tabular data search -->
-          <h2 id="tabular">Données tabulaires</h2>
+          <h2 id="tabular" class="fr-mt-6w">Base de données référençant la commune</h2>
 
           <div class="fr-search-bar fr-mb-2w" style="max-width: 560px">
             <input
@@ -109,7 +153,7 @@
           </section>
 
           <!-- Spatial datasets -->
-          <h2 id="spatial" class="fr-mt-6w">Jeux de données territoriaux</h2>
+          <h2 id="spatial" class="fr-mt-6w">Jeux de données couvrant géographiquement la commune</h2>
 
           <div v-if="spatialLoading">Chargement…</div>
 
@@ -135,50 +179,6 @@
               :current-page="spatialCurrentPage"
               @update:current-page="spatialCurrentPage = $event"
             />
-          </template>
-
-          <!-- Org datasets -->
-          <h2 id="orgs" class="fr-mt-6w">Organisations data.gouv.fr</h2>
-
-          <div v-if="orgsLoading">Chargement…</div>
-
-          <p v-else-if="orgs.length === 0" class="fr-text-mention--grey">
-            Aucune organisation data.gouv.fr trouvée pour cette commune.
-          </p>
-
-          <template v-else>
-            <section v-for="org in orgs" :key="org.id" class="fr-mb-6w">
-              <h3>{{ org.name }}</h3>
-
-              <div v-if="org.datasetsLoading">Chargement…</div>
-
-              <p v-else-if="org.datasets.length === 0" class="fr-text-mention--grey">
-                Aucun jeu de données.
-              </p>
-
-              <template v-else>
-                <ul class="fr-raw-list">
-                  <li
-                    v-for="ds in org.datasets"
-                    :key="ds.id"
-                    class="fr-py-1w"
-                    style="border-bottom: 1px solid var(--border-default-grey)"
-                  >
-                    <a :href="ds.page" target="_blank" rel="noopener" class="fr-link">
-                      {{ ds.title }}
-                    </a>
-                  </li>
-                </ul>
-
-                <DsfrPagination
-                  v-if="pageCount(org) > 1"
-                  class="fr-mt-2w"
-                  :pages="pages(org)"
-                  :current-page="org.currentPage"
-                  @update:current-page="onPageChange(org, $event)"
-                />
-              </template>
-            </section>
           </template>
         </div>
       </div>
