@@ -100,7 +100,7 @@
                   </tbody>
                 </table>
               </div>
-              <a :href="tabularSelected.previewUrl" target="_blank" rel="noopener" class="fr-link fr-text--sm" style="display: inline-block">
+              <a :href="tabularSelected.explorerUrl" target="_blank" rel="noopener" class="fr-link fr-text--sm" style="display: inline-block">
                 Voir dans l'explorateur →
               </a>
             </template>
@@ -220,10 +220,11 @@ interface Dataset {
 
 interface TabularResource {
   resourceId: string
+  datasetId: string
   colCommune: string
   datasetTitle: string
   title: string
-  previewUrl: string
+  explorerUrl: string
   loading: boolean
   total: number
   rows: Record<string, unknown>[]
@@ -336,10 +337,11 @@ async function searchTabular() {
     const json = await res.json()
     tabularSearchResults.value = json.data.map((row: any) => ({
       resourceId: row.resource_id,
+      datasetId: row['dataset.id'],
       colCommune: row.col_commune,
       datasetTitle: row['dataset.title'],
       title: row.title,
-      previewUrl: row.preview_url,
+      explorerUrl: '',
       loading: false,
       total: 0,
       rows: [],
@@ -352,10 +354,11 @@ async function searchTabular() {
 async function selectTabularResource(r: TabularResource) {
   tabularSearchResults.value = []
   tabularQuery.value = ''
-  tabularSelected.value = { ...r, loading: true }
+  const filter = `${encodeURIComponent(r.colCommune)}__exact=${code}`
+  const explorerUrl = `https://explore.data.gouv.fr/fr/datasets/${r.datasetId}/?${filter}#/resources/${r.resourceId}`
+  tabularSelected.value = { ...r, loading: true, explorerUrl }
 
   try {
-    const filter = `${encodeURIComponent(r.colCommune)}__exact=${code}`
     const res = await fetch(
       `https://tabular-api.data.gouv.fr/api/resources/${r.resourceId}/data/?${filter}&page_size=5`,
     )
