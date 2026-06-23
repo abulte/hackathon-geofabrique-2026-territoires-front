@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import CommuneView from '../views/CommuneView.vue'
+import AboutView from '../views/AboutView.vue'
 
 export default createRouter({
   history: createWebHashHistory(),
@@ -10,5 +11,6 @@ export default createRouter({
   routes: [
     { path: '/', component: HomeView },
     { path: '/communes/:code', component: CommuneView },
+    { path: '/a-propos', component: AboutView },
   ],
 })
