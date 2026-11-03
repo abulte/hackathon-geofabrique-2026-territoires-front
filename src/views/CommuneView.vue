@@ -525,7 +525,7 @@ async function fetchOrgs() {
     orgsLoading.value = false
   }
 
-  orgs.value.forEach(fetchDatasets)
+  orgs.value.forEach((org) => fetchDatasets(org))
 }
 
 async function fetchDatasets(org: Org, page = 1) {
